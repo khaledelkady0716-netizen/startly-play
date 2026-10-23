@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Startly Play - Pro Soccer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: radial-gradient(circle at top, #1a2a6c, #0b1020 70%);
+    color: #fff; user-select: none; -webkit-user-select: none;
+  }
+  .screen { display: none; padding: 16px; max-width: 900px; margin: 0 auto; }
+  .screen.active { display: block; }
+  h1, h2 { text-align: center; margin: 10px 0; }
+  .logo {
+    font-size: 2.6rem; font-weight: 900; letter-spacing: 2px;
+    background: linear-gradient(90deg, #ffd700, #ff8c00);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,0.08); border-radius: 14px;
+    padding: 10px 16px; margin-bottom: 12px;
+  }
+  .coins { color: #ffd700; font-weight: bold; font-size: 1.1rem; }
+  .btn {
+    display: block; width: 100%; max-width: 360px; margin: 10px auto;
+    padding: 14px; font-size: 1.1rem; font-weight: bold; color: #fff;
+    border: none; border-radius: 40px; cursor: pointer;
+    background: linear-gradient(135deg, #00c853, #00796b);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4); transition: transform 0.1s;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn.blue { background: linear-gradient(135deg, #2575fc, #6a11cb); }
+  .btn.gold { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #222; }
+  .btn.gray { background: linear-gradient(135deg, #555, #333); }
+  .btn.small { display: inline-block; width: auto; padding: 8px 20px; font-size: 0.9rem; margin: 4px; }
+  .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .diff button.sel { outline: 3px solid #ffd700; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+  .card {
+    border-radius: 12px; padding: 8px; text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5); position: relative; color: #222;
+  }
+  .card .ovr { font-size: 1.6rem; font-weight: 900; }
+  .card .pos { font-size: 0.75rem; font-weight: bold; }
+  .card .face { font-size: 2rem; margin: 2px 0; }
+  .card .nm { font-size: 0.8rem; font-weight: bold; }
+  .card.bronze { background: linear-gradient(135deg, #d9a066, #8b5a2b); }
+  .card.silver { background: linear-gradient(135deg, #f0f0f0, #9aa0a6); }
+  .card.gold { background: linear-gradient(135deg, #fff176, #ffb300); }
+  .card.elite { background: linear-gradient(135deg, #b388ff, #311b92); color: #fff; }
+  .card.inteam { outline: 3px solid #00e676; }
+  .card .tag {
+    position: absolute; top: 4px; right: 4px; font-size: 0.65rem;
+    background: #00e676; color: #003; padding: 1px 5px; border-radius: 8px;
+  }
+
+  /* Match */
+  #matchWrap { position: relative; max-width: 480px; margin: 0 auto; }
+  canvas#pitch {
+    width: 100%; border-radius: 14px; border: 3px solid #fff;
+    background: #2e9e4f; touch-action: none; display: block;
+  }
+  .hud {
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: bold; font-size: 1.1rem; padding: 8px 4px;
+  }
+  .scoreboard {
+    background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 20px;
+    font-size: 1.3rem;
+  }
+  .touch { display: none; justify-content: space-between; align-items: center; padding: 10px 0; }
+  @media (pointer: coarse) { .touch { display: flex; } }
+  #joy {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.4);
+    position: relative; touch-action: none;
+  }
+  #stick {
+    width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.6);
+    position: absolute; left: 35px; top: 35px;
+  }
+  .actbtn {
+    width: 76px; height: 76px; border-radius: 50%; border: none; color: #fff;
+    font-weight: bold; font-size: 0.9rem; margin-left: 8px;
+  }
+  #banner {
+    position: absolute; left: 0; right: 0; top: 40%; text-align: center;
+    font-size: 2.4rem; font-weight: 900; text-shadow: 0 4px 12px #000;
+    pointer-events: none; opacity: 0; transition: opacity 0.3s;
+  }
+  #banner.show { opacity: 1; }
+
+  /* Chat */
+  #chatBox {
+    background: rgba(0,0,0,0.45); border-radius: 12px; padding: 8px;
+    height: 120px; overflow-y: auto; font-size: 0.9rem; margin-top: 8px;
+  }
+  #chatBox div { margin: 3px 0; }
+  .chatin { display: flex; gap: 6px; margin-top: 6px; }
+  .chatin input {
+    flex: 1; padding: 10px; border-radius: 20px; border: none; font-size: 1rem;
+  }
+
+  table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; }
+  th, td { padding: 8px; text-align: center; }
+  th { background: rgba(255,255,255,0.15); }
+  tr.me { background: rgba(255,215,0,0.25); font-weight: bold; }
+  .muted { color: #aab; text-align: center; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<!-- MENU -->
+<div id="menu" class="screen active">
+  <h1 class="logo">STARTLY PLAY<br>PRO SOCCER</h1>
+  <div class="topbar"><span>Team: <b id="teamNameTxt">My Team</b></span><span class="coins">Coins: <span class="coinTxt">0</span></span></div>
+  <p class="muted">Team rating: <b id="teamOvr">0</b> | Wins: <b id="winsTxt">0</b></p>
+  <button class="btn" onclick="showScreen('pick')">Play Match</button>
+  <button class="btn blue" onclick="showScreen('team')">My Squad</button>
+  <button class="btn gold" onclick="showScreen('shop')">Card Shop</button>
+  <button class="btn gray" onclick="showScreen('league')">League Table</button>
+  <button class="btn gray" onclick="renameTeam()">Rename Team</button>
+  <p class="muted"><a style="color:#8ec5ff" href="index.html">Back to home</a></p>
+</div>
+
+<!-- PICK MATCH -->
+<div id="pick" class="screen">
+  <h2>Choose Difficulty</h2>
+  <div class="row diff">
+    <button class="btn small" data-d="easy" onclick="setDiff('easy')">Easy (+50 coins)</button>
+    <button class="btn small" data-d="medium" onclick="setDiff('medium')">Medium (+100 coins)</button>
+    <button class="btn small" data-d="hard" onclick="setDiff('hard')">Hard (+200 coins)</button>
+  </div>
+  <p class="muted">Your opponent: <b id="oppName"></b> (rating <span id="oppOvr"></span>)</p>
+  <button class="btn" onclick="startMatch()">Kick Off!</button>
+  <button class="btn gray" onclick="showScreen('menu')">Back</button>
+</div>
+
+<!-- MATCH -->
+<div id="match" class="screen">
+  <div class="hud">
+    <span id="hudHome">My Team</span>
+    <span class="scoreboard"><span id="sH">0</span> - <span id="sA">0</span></span>
+    <span id="hudAway">CPU</span>
+  </div>
+  <div class="hud" style="justify-content:center;padding:0">Time: <span id="clock">0:00</span></div>
+  <div id="matchWrap">
+    <canvas id="pitch" width="420" height="620"></canvas>
+    <div id="banner"></div>
+  </div>
+  <div class="touch">
+    <div id="joy"><div id="stick"></div></div>
+    <div>
+      <button class="actbtn" style="background:#e53935" id="btnShoot">SHOOT</button>
+      <button class="actbtn" style="background:#1e88e5" id="btnPass">PASS</button>
+    </div>
+  </div>
+  <p class="muted">Arrows / WASD to move, Space to shoot, Shift to pass</p>
+  <div id="chatBox"></div>
+  <div class="chatin">
+    <input id="chatInput" placeholder="Type a message to your team..." maxlength="80">
+    <button class="btn small" onclick="sendChat()">Send</button>
+  </div>
+  <button class="btn gray" onclick="quitMatch()">Quit Match</button>
+</div>
+
+<!-- RESULT -->
+<div id="result" class="screen">
+  <h2 id="resTitle"></h2>
+  <h1 id="resScore"></h1>
+  <p class="muted" id="resReward"></p>
+  <button class="btn" onclick="showScreen('pick')">Play Again</button>
+  <button class="btn gray" onclick="showScreen('menu')">Main Menu</button>
+</div>
+
+<!-- TEAM -->
+<div id="team" class="screen">
+  <h2>My Squad</h2>
+  <div class="topbar"><span>Team rating: <b id="teamOvr2">0</b></span><span class="coins">Coins: <span class="coinTxt">0</span></span></div>
+  <p class="muted">Tap a card to add or remove it from your starting team (max 5 on the pitch).</p>
+  <div class="cards" id="squadCards"></div>
+  <button class="btn gray" onclick="showScreen('menu')">Back</button>
+</div>
+
+<!-- SHOP -->
+<div id="shop" class="screen">
+  <h2>Card Shop</h2>
+  <div class="topbar"><span>Open packs to get new players</span><span class="coins">Coins: <span class="coinTxt">0</span></span></div>
+  <button class="btn" onclick="buyPack('bronze')">Basic Pack - 100 coins</button>
+  <button class="btn blue" onclick="buyPack('silver')">Rare Pack - 300 coins</button>
+  <button class="btn gold" onclick="buyPack('gold')">Elite Pack - 700 coins</button>
+  <div class="cards" id="packCards" style="max-width:300px;margin:12px auto"></div>
+  <p class="muted" id="packMsg"></p>
+  <button class="btn gray" onclick="showScreen('menu')">Back</button>
+</div>
+
+<!-- LEAGUE -->
+<div id="league" class="screen">
+  <h2>League Table</h2>
+  <table id="leagueTable"></table>
+  <button class="btn gray" onclick="showScreen('menu')">Back</button>
+</div>
+
+<script>
+/* ---------- Data and saving ---------- */
+const FIRST = ['Leo','Karim','Mo','Neo','Kai','Ravi','Zed','Luca','Omar','Diego','Ivan','Sami','Theo','Yuri','Hugo','Nico','Ali','Jude','Rio','Ezra'];
+const LAST = ['Silva','Hassan','Costa','Rossi','Khan','Torres','Novak','Ali','Berg','Mendes','Reyes','Sato','Petrov','Diaz','Okafor','Lopez','Said','Mori','Cruz','Vega'];
+const FACES = ['😀','😎','🧔','👦','🧑','😄','🙂','😤'];
+const POS = ['ST','ST','LW','RW','CM','CM','CB','CB','GK'];
+
+let save = JSON.parse(localStorage.getItem('startlySoccer') || 'null');
+if (!save) {
+  save = { name: 'My Team', coins: 300, wins: 0, played: 0, squad: [], team: [], league: {} };
+  for (let i = 0; i < 8; i++) save.squad.push(makeCard(i < 5 ? 'bronze' : 'silver', i));
+  save.team = save.squad.slice(0, 5).map(c => c.id);
+  persist();
+}
+function persist() { localStorage.setItem('startlySoccer', JSON.stringify(save)); }
+function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function makeCard(tier, i) {
+  const ranges = { bronze: [55, 64], silver: [65, 76], gold: [77, 87], elite: [88, 95] };
+  const r = ranges[tier];
+  return {
+    id: Date.now() + '' + rnd(0, 99999) + (i || 0),
+    name: FIRST[rnd(0, FIRST.length - 1)] + ' ' + LAST[rnd(0, LAST.length - 1)],
+    ovr: rnd(r[0], r[1]), tier: tier,
+    pos: POS[rnd(0, POS.length - 1)], face: FACES[rnd(0, FACES.length - 1)]
+  };
+}
+function cardHTML(c, extra) {
+  return '<div class="card ' + c.tier + (extra || '') + '" data-id="' + c.id + '">' +
+    (extra ? '<span class="tag">IN</span>' : '') +
+    '<div class="ovr">' + c.ovr + '</div><div class="pos">' + c.pos + '</div>' +
+    '<div class="face">' + c.face + '</div><div class="nm">' + c.name + '</div></div>';
+}
+function teamRating() {
+  const t = save.squad.filter(c => save.team.includes(c.id));
+  if (!t.length) return 50;
+  return Math.round(t.reduce((s, c) => s + c.ovr, 0) / t.length);
+}
+
+/* ---------- Screens ---------- */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  refresh();
+  if (id === 'pick') setDiff(difficulty);
+  if (id === 'team') renderSquad();
+  if (id === 'league') renderLeague();
+}
+function refresh() {
+  document.querySelectorAll('.coinTxt').forEach(e => e.textContent = save.coins);
+  document.getElementById('teamNameTxt').textContent = save.name;
+  document.getElementById('teamOvr').textContent = teamRating();
+  document.getElementById('teamOvr2').textContent = teamRating();
+  document.getElementById('winsTxt').textContent = save.wins;
+}
+function renameTeam() {
+  const n = prompt('Enter your team name:', save.name);
+  if (n && n.trim()) { save.name = n.trim().slice(0, 16); persist(); refresh(); }
+}
+function renderSquad() {
+  const box = document.getElementById('squadCards');
+  box.innerHTML = save.squad.slice().sort((a, b) => b.ovr - a.ovr)
+    .map(c => cardHTML(c, save.team.includes(c.id) ? ' inteam' : '')).join('');
+  box.querySelectorAll('.card').forEach(el => el.onclick = () => {
+    const id = el.dataset.id;
+    if (save.team.includes(id)) {
+      if (save.team.length > 1) save.team = save.team.filter(x => x !== id);
+    } else if (save.team.length < 5) {
+      save.team.push(id);
+    } else { alert('Your team already has 5 players. Remove one first.'); }
+    persist(); renderSquad(); refresh();
+  });
+}
+function buyPack(type) {
+  const price = { bronze: 100, silver: 300, gold: 700 }[type];
+  if (save.coins < price) { document.getElementById('packMsg').textContent = 'Not enough coins. Win matches to earn more!'; return; }
+  save.coins -= price;
+  const odds = { bronze: [['bronze', 70], ['silver', 28], ['gold', 2]], silver: [['bronze', 20], ['silver', 60], ['gold', 18], ['elite', 2]], gold: [['silver', 30], ['gold', 58], ['elite', 12]] }[type];
+  const roll = rnd(1, 100); let acc = 0, tier = odds[0][0];
+  for (const o of odds) { acc += o[1]; if (roll <= acc) { tier = o[0]; break; } }
+  const card = makeCard(tier);
+  save.squad.push(card); persist(); refresh();
+  document.getElementById('packCards').innerHTML = cardHTML(card);
+  document.getElementById('packMsg').textContent = 'You got ' + card.name + ' (' + card.ovr + ')!';
+}
+
+/* ---------- League ---------- */
+const CPU_TEAMS = ['Red Lions', 'Blue Sharks', 'Golden Eagles', 'Black Wolves', 'Green Dragons', 'Night Owls'];
+function renderLeague() {
+  const rows = CPU_TEAMS.map(n => {
+    if (!save.league[n]) save.league[n] = { w: rnd(0, 3), d: rnd(0, 2), l: rnd(0, 3) };
+    return { n, ...save.league[n], me: false };
+  });
+  rows.push({ n: save.name, w: save.wins, d: save.draws || 0, l: save.played - save.wins - (save.draws || 0), me: true });
+  rows.forEach(r => r.pts = r.w * 3 + r.d);
+  rows.sort((a, b) => b.pts - a.pts);
+  document.getElementById('leagueTable').innerHTML =
+    '<tr><th>#</th><th>Team</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr>' +
+    rows.map((r, i) => '<tr class="' + (r.me ? 'me' : '') + '"><td>' + (i + 1) + '</td><td>' + r.n + '</td><td>' + r.w + '</td><td>' + r.d + '</td><td>' + r.l + '</td><td>' + r.pts + '</td></tr>').join('');
+  persist();
+}
+
+/* ---------- Difficulty ---------- */
+let difficulty = 'medium';
+const DIFF = {
+  easy:   { speed: 1.9, react: 0.5, rating: -8, reward: 50 },
+  medium: { speed: 2.4, react: 0.75, rating: 0, reward: 100 },
+  hard:   { speed: 2.9, react: 1.0, rating: 8, reward: 200 }
+};
+let oppTeam = 'Red Lions';
+function setDiff(d) {
+  difficulty = d;
+  oppTeam = CPU_TEAMS[rnd(0, CPU_TEAMS.length - 1)];
+  document.querySelectorAll('.diff button').forEach(b => b.classList.toggle('sel', b.dataset.d === d));
+  document.getElementById('oppName').textContent = oppTeam;
+  document.getElementById('oppOvr').textContent = Math.max(50, teamRating() + DIFF[d].rating);
+}
+
+/* ---------- Match engine ---------- */
+const cv = document.getElementById('pitch');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const GOALW = 110;
+const MATCH_SECONDS = 120;
+let players, ball, scoreH, scoreA, timeLeft, matchTimer, playing, paused, controlled, kickCooldown;
+const keys = {};
+let joy = { x: 0, y: 0 };
+
+function mkPlayer(x, y, team, role) {
+  return { x, y, hx: x, hy: y, team, role, r: 14, vx: 0, vy: 0 };
+}
+function setupPlayers() {
+  players = [];
+  // Home (blue) attacks upward. 5 players: GK, 2 DEF, 2 ATT
+  players.push(mkPlayer(W / 2, H - 40, 'H', 'GK'));
+  players.push(mkPlayer(W / 2 - 90, H - 170, 'H', 'DEF'));
+  players.push(mkPlayer(W / 2 + 90, H - 170, 'H', 'DEF'));
+  players.push(mkPlayer(W / 2 - 80, H / 2 + 40, 'H', 'ATT'));
+  players.push(mkPlayer(W / 2 + 80, H / 2 + 40, 'H', 'ATT'));
+  // Away (red)
+  players.push(mkPlayer(W / 2, 40, 'A', 'GK'));
+  players.push(mkPlayer(W / 2 - 90, 170, 'A', 'DEF'));
+  players.push(mkPlayer(W / 2 + 90, 170, 'A', 'DEF'));
+  players.push(mkPlayer(W / 2 - 80, H / 2 - 40, 'A', 'ATT'));
+  players.push(mkPlayer(W / 2 + 80, H / 2 - 40, 'A', 'ATT'));
+  controlled = players[3];
+}
+function resetPositions(kickTeam) {
+  players.forEach(p => { p.x = p.hx; p.y = p.hy; p.vx = p.vy = 0; });
+  ball = { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 8 };
+  controlled = players[3];
+}
+function startMatch() {
+  setupPlayers(); resetPositions();
+  scoreH = 0; scoreA = 0; timeLeft = MATCH_SECONDS; playing = true; paused = false; kickCooldown = 0;
+  document.getElementById('hudHome').textContent = save.name;
+  document.getElementById('hudAway').textContent = oppTeam;
+  document.getElementById('chatBox').innerHTML = '';
+  chatSay('Coach', 'Welcome to the match! Good luck!');
+  updateScoreUI();
+  showScreen('match');
+  clearInterval(matchTimer);
+  matchTimer = setInterval(() => {
+    if (!playing || paused) return;
+    timeLeft--;
+    updateClock();
+    if (timeLeft <= 0) endMatch();
+  }, 1000);
+  updateClock();
+}
+function quitMatch() {
+  if (confirm('Quit the match? You will lose it.')) { scoreA = Math.max(scoreA, scoreH + 1); endMatch(); }
+}
+function updateClock() {
+  const used = MATCH_SECONDS - timeLeft;
+  const m = Math.floor(used / 60), s = used % 60;
+  document.getElementById('clock').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+}
+function updateScoreUI() {
+  document.getElementById('sH').textContent = scoreH;
+  document.getElementById('sA').textContent = scoreA;
+}
+function banner(text, ms) {
+  const b = document.getElementById('banner');
+  b.textContent = text; b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), ms || 1200);
+}
+
+/* Input */
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key === ' ' && playing) { doKick(true); e.preventDefault(); }
+  if (e.key === 'Shift' && playing) doKick(false);
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+document.getElementById('btnShoot').addEventListener('touchstart', e => { doKick(true); e.preventDefault(); }, { passive: false });
+document.getElementById('btnPass').addEventListener('touchstart', e => { doKick(false); e.preventDefault(); }, { passive: false });
+
+const joyEl = document.getElementById('joy'), stick = document.getElementById('stick');
+function joyMove(e) {
+  const r = joyEl.getBoundingClientRect(), t = e.touches[0];
+  let dx = t.clientX - (r.left + r.width / 2), dy = t.clientY - (r.top + r.height / 2);
+  const d = Math.hypot(dx, dy), max = 45;
+  if (d > max) { dx = dx / d * max; dy = dy / d * max; }
+  joy.x = dx / max; joy.y = dy / max;
+  stick.style.left = (35 + dx) + 'px'; stick.style.top = (35 + dy) + 'px';
+  e.preventDefault();
+}
+joyEl.addEventListener('touchstart', joyMove, { passive: false });
+joyEl.addEventListener('touchmove', joyMove, { passive: false });
+joyEl.addEventListener('touchend', () => { joy.x = joy.y = 0; stick.style.left = '35px'; stick.style.top = '35px'; });
+
+function doKick(shoot) {
+  if (!controlled || kickCooldown > 0) return;
+  const d = Math.hypot(ball.x - controlled.x, ball.y - controlled.y);
+  if (d > controlled.r + ball.r + 12) return;
+  const rating = teamRating();
+  const power = shoot ? 9 + rating / 25 : 6;
+  let tx, ty;
+  if (shoot) { tx = W / 2 + (Math.random() - 0.5) * (GOALW - 30); ty = 0; }
+  else {
+    // pass to nearest teammate ahead
+    let best = null, bd = 1e9;
+    players.filter(p => p.team === 'H' && p !== controlled && p.role !== 'GK').forEach(p => {
+      const dd = Math.hypot(p.x - controlled.x, p.y - controlled.y);
+      if (dd < bd && p.y < controlled.y + 60) { bd = dd; best = p; }
+    });
+    if (best) { tx = best.x; ty = best.y; } else { tx = controlled.x; ty = controlled.y - 100; }
+  }
+  const a = Math.atan2(ty - ball.y, tx - ball.x);
+  ball.vx = Math.cos(a) * power; ball.vy = Math.sin(a) * power;
+  kickCooldown = 12;
+}
+
+function moveToward(p, tx, ty, sp) {
+  const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+  if (d > 3) { p.x += dx / d * sp; p.y += dy / d * sp; }
+}
+
+function update() {
+  if (!playing || paused) return;
+  if (kickCooldown > 0) kickCooldown--;
+  const cfg = DIFF[difficulty];
+  const myBoost = 2.2 + (teamRating() - 60) / 60;
+
+  // Switch controlled player to nearest home outfield player to ball
+  let nearest = null, nd = 1e9;
+  players.filter(p => p.team === 'H' && p.role !== 'GK').forEach(p => {
+    const d = Math.hypot(p.x - ball.x, p.y - ball.y);
+    if (d < nd) { nd = d; nearest = p; }
+  });
+  if (nearest) controlled = nearest;
+
+  // Player movement
+  let mx = joy.x, my = joy.y;
+  if (keys['arrowleft'] || keys['a']) mx -= 1;
+  if (keys['arrowright'] || keys['d']) mx += 1;
+  if (keys['arrowup'] || keys['w']) my -= 1;
+  if (keys['arrowdown'] || keys['s']) my += 1;
+  const ml = Math.hypot(mx, my);
+  if (ml > 0) { controlled.x += mx / Math.max(1, ml) * myBoost * 1.6; controlled.y += my / Math.max(1, ml) * myBoost * 1.6; }
+
+  // Teammates AI
+  players.filter(p => p.team === 'H' && p !== controlled).forEach(p => {
+    if (p.role === 'GK') { moveToward(p, Math.max(W / 2 - 50, Math.min(W / 2 + 50, ball.x)), H - 40, 2); return; }
+    const tx = p.hx + (ball.x - W / 2) * 0.3;
+    const ty = p.role === 'ATT' ? Math.min(p.hy, ball.y + 40) : p.hy + (ball.y - H / 2) * 0.15;
+    moveToward(p, tx, ty, 1.8);
+  });
+
+  // Opponent AI
+  const aiPlayers = players.filter(p => p.team === 'A');
+  let chaser = null, cd = 1e9;
+  aiPlayers.filter(p => p.role !== 'GK').forEach(p => {
+    const d = Math.hypot(p.x - ball.x, p.y - ball.y);
+    if (d < cd) { cd = d; chaser = p; }
+  });
+  aiPlayers.forEach(p => {
+    if (p.role === 'GK') {
+      moveToward(p, Math.max(W / 2 - 50, Math.min(W / 2 + 50, ball.x)), 40, 1.6 + cfg.react);
+    } else if (p === chaser) {
+      moveToward(p, ball.x, ball.y, cfg.speed * cfg.react + 0.6);
+      const d = Math.hypot(ball.x - p.x, ball.y - p.y);
+      if (d < p.r + ball.r + 6 && kickCooldown === 0) {
+        // AI shoots at my goal with some error
+        const tx = W / 2 + (Math.random() - 0.5) * (GOALW + 50 - cfg.react * 40);
+        const a = Math.atan2(H - ball.y, tx - ball.x);
+        const pw = 6 + cfg.react * 2.2;
+        ball.vx = Math.cos(a) * pw; ball.vy = Math.sin(a) * pw;
+        kickCooldown = 18;
+      }
+    } else {
+      const tx = p.hx + (ball.x - W / 2) * 0.3;
+      const ty = p.hy + (ball.y - H / 2) * 0.2;
+      moveToward(p, tx, ty, 1.4);
+    }
+  });
+
+  // Keep players in bounds
+  players.forEach(p => {
+    p.x = Math.max(p.r, Math.min(W - p.r, p.x));
+    p.y = Math.max(p.r, Math.min(H - p.r, p.y));
+  });
+
+  // Ball touches (dribble)
+  players.forEach(p => {
+    const dx = ball.x - p.x, dy = ball.y - p.y, d = Math.hypot(dx, dy);
+    if (d < p.r + ball.r && d > 0) {
+      const push = p === controlled ? 2.2 : 1.6;
+      if (kickCooldown === 0 || p.team === 'H') {
+        ball.vx += dx / d * push * 0.6;
+        ball.vy += dy / d * push * 0.6;
+      }
+      ball.x = p.x + dx / d * (p.r + ball.r);
+      ball.y = p.y + dy / d * (p.r + ball.r);
+    }
+  });
+
+  // Goalkeeper saves
+  players.filter(p => p.role === 'GK').forEach(p => {
+    const d = Math.hypot(ball.x - p.x, ball.y - p.y);
+    if (d < p.r + ball.r + 6 && Math.hypot(ball.vx, ball.vy) > 3) {
+      ball.vx = -ball.vx * 0.5 + (Math.random() - 0.5) * 3;
+      ball.vy = -ball.vy * 0.6;
+      if (Math.random() < 0.3) chatSay(p.team === 'H' ? 'Keeper' : save.name, p.team === 'H' ? 'Safe hands!' : 'Great save by them!');
+    }
+  });
+
+  // Ball physics
+  ball.x += ball.vx; ball.y += ball.vy;
+  ball.vx *= 0.985; ball.vy *= 0.985;
+  const sp = Math.hypot(ball.vx, ball.vy);
+  if (sp > 11) { ball.vx *= 11 / sp; ball.vy *= 11 / sp; }
+
+  // Walls and goals
+  const inGoal = ball.x > W / 2 - GOALW / 2 && ball.x < W / 2 + GOALW / 2;
+  if (ball.x < ball.r) { ball.x = ball.r; ball.vx *= -0.8; }
+  if (ball.x > W - ball.r) { ball.x = W - ball.r; ball.vx *= -0.8; }
+  if (ball.y < ball.r) {
+    if (inGoal) { goal('H'); } else { ball.y = ball.r; ball.vy *= -0.8; }
+  }
+  if (ball.y > H - ball.r) {
+    if (inGoal) { goal('A'); } else { ball.y = H - ball.r; ball.vy *= -0.8; }
+  }
+}
+
+function goal(team) {
+  if (team === 'H') { scoreH++; banner('GOAL!', 1500); chatSay('Teammate', ['Yes!! What a goal!', 'Unbelievable!', 'Keep going!'][rnd(0, 2)]); }
+  else { scoreA++; banner('Conceded...', 1500); chatSay('Teammate', ['Stay focused!', 'Shake it off!', 'We can come back!'][rnd(0, 2)]); }
+  updateScoreUI();
+  paused = true;
+  setTimeout(() => { if (playing) { resetPositions(); paused = false; } }, 1300);
+}
+
+/* ---------- Drawing ---------- */
+function drawPitch() {
+  // grass stripes
+  for (let i = 0; i < 10; i++) {
+    ctx.fillStyle = i % 2 ? '#2e9e4f' : '#35a85a';
+    ctx.fillRect(0, i * H / 10, W, H / 10);
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 3;
+  ctx.strokeRect(6, 6, W - 12, H - 12);
+  ctx.beginPath(); ctx.moveTo(6, H / 2); ctx.lineTo(W - 6, H / 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W / 2, H / 2, 55, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeRect(W / 2 - 100, 6, 200, 80);
+  ctx.strokeRect(W / 2 - 100, H - 86, 200, 80);
+  // goals
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(W / 2 - GOALW / 2, 0, GOALW, 8);
+  ctx.fillRect(W / 2 - GOALW / 2, H - 8, GOALW, 8);
+}
+function drawPlayer(p) {
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(p.x, p.y + p.r - 2, p.r, p.r / 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  const color = p.team === 'H' ? '#2575fc' : '#e53935';
+  const g = ctx.createRadialGradient(p.x - 4, p.y - 4, 2, p.x, p.y, p.r);
+  g.addColorStop(0, '#fff'); g.addColorStop(0.2, color); g.addColorStop(1, p.team === 'H' ? '#0d3a8c' : '#8e1a17');
+  ctx.fillStyle = p.role === 'GK' ? '#ffb300' : g;
+  ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  if (p === controlled) {
+    ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.moveTo(p.x, p.y - p.r - 18); ctx.lineTo(p.x - 6, p.y - p.r - 28); ctx.lineTo(p.x + 6, p.y - p.r - 28); ctx.fill();
+  }
+}
+function drawBall() {
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(ball.x + 2, ball.y + 5, ball.r, ball.r / 2, 0, 0, Math.PI * 2); ctx.fill();
+  const g = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, ball.r);
+  g.addColorStop(0, '#fff'); g.addColorStop(1, '#bbb');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(ball.x, ball.y, 2.5, 0, Math.PI * 2); ctx.fill();
+}
+function draw() {
+  if (!document.getElementById('match').classList.contains('active')) return;
+  drawPitch();
+  players.forEach(drawPlayer);
+  drawBall();
+}
+
+/* ---------- End of match ---------- */
+function endMatch() {
+  playing = false; clearInterval(matchTimer);
+  save.played++;
+  let title, reward = 0;
+  if (scoreH > scoreA) { title = 'VICTORY!'; save.wins++; reward = DIFF[difficulty].reward + scoreH * 10; }
+  else if (scoreH === scoreA) { title = 'DRAW'; save.draws = (save.draws || 0) + 1; reward = 30; }
+  else { title = 'DEFEAT'; reward = 10; }
+  save.coins += reward; persist();
+  document.getElementById('resTitle').textContent = title;
+  document.getElementById('resScore').textContent = save.name + ' ' + scoreH + ' - ' + scoreA + ' ' + oppTeam;
+  document.getElementById('resReward').textContent = 'You earned ' + reward + ' coins!';
+  showScreen('result');
+}
+
+/* ---------- Chat with computer teammates ---------- */
+const BOTS = ['Striker_Sam', 'Mid_Mia', 'Defender_Dan'];
+function chatSay(who, msg) {
+  const box = document.getElementById('chatBox');
+  const d = document.createElement('div');
+  d.innerHTML = '<b style="color:#ffd700">' + who + ':</b> ' + msg;
+  box.appendChild(d); box.scrollTop = box.scrollHeight;
+}
+function sendChat() {
+  const inp = document.getElementById('chatInput');
+  const t = inp.value.trim();
+  if (!t) return;
+  const safe = t.replace(/</g, '&lt;');
+  chatSay('You', safe);
+  inp.value = '';
+  const replies = ['Got it, captain!', 'Pass me the ball!', 'I am open!', 'Let us win this!', 'Haha nice one', 'Focus, we can do it!', 'Send it forward!'];
+  setTimeout(() => chatSay(BOTS[rnd(0, 2)], replies[rnd(0, replies.length - 1)]), 700);
+}
+document.getElementById('chatInput').addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Enter') sendChat();
+});
+document.getElementById('chatInput').addEventListener('keyup', e => e.stopPropagation());
+
+/* ---------- Main loop ---------- */
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+setupPlayers(); resetPositions();
+refresh();
+loop();
+</script>
+</body>
+</html>
